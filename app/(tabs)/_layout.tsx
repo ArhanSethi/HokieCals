@@ -40,6 +40,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="calendar"
+        options={{
+          title: 'Calendar',
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{
+                ios: 'calendar',
+                android: 'calendar_today',
+                web: 'calendar_today',
+              }}
+              tintColor={color}
+              size={28}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="grubhub"
         options={{
           title: 'Grubhub',
