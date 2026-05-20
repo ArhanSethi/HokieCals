@@ -51,5 +51,3 @@ export const MOCK_RECENT_LOGS: MealLogPreview[] = [
     source: 'manual',
   },
 ];
-
-export const MOCK_PENDING_COUNT = 2;

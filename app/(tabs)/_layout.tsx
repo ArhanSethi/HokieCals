@@ -40,15 +40,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="grubhub"
         options={{
-          title: 'Log',
+          title: 'Grubhub',
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
+                ios: 'bag.fill',
+                android: 'shopping_cart',
+                web: 'shopping_cart',
               }}
               tintColor={color}
               size={28}

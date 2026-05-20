@@ -93,12 +93,14 @@ type HomeScreenProps = {
   summary: DaySummary;
   recentLogs: MealLogPreview[];
   pendingCount: number;
+  onPendingPress?: () => void;
 };
 
 export default function HomeScreen({
   summary,
   recentLogs,
   pendingCount,
+  onPendingPress,
 }: HomeScreenProps) {
   const { width } = useWindowDimensions();
   const chartSize = Math.min(width - 48, 280);
@@ -188,7 +190,10 @@ export default function HomeScreen({
         </View>
 
         {pendingCount > 0 && (
-          <TouchableOpacity style={styles.pendingBadge} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.pendingBadge}
+            activeOpacity={0.8}
+            onPress={onPendingPress}>
             <Text style={styles.pendingText}>
               {pendingCount} Orders to Review
             </Text>
