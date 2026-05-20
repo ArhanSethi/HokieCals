@@ -1,5 +1,6 @@
-const tintColorLight = '#2f95dc';
-const tintColorDark = '#fff';
+const vtMaroon = '#861F41';
+const tintColorLight = vtMaroon;
+const tintColorDark = vtMaroon;
 
 export default {
   light: {
@@ -11,9 +12,9 @@ export default {
   },
   dark: {
     text: '#fff',
-    background: '#000',
+    background: '#121212',
     tint: tintColorDark,
-    tabIconDefault: '#ccc',
+    tabIconDefault: '#666',
     tabIconSelected: tintColorDark,
   },
 };
