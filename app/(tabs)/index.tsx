@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 
 import { usePendingQueue } from '@/context/PendingQueueContext';
+import { useSettings } from '@/context/SettingsContext';
 import {
   MOCK_RECENT_LOGS,
   MOCK_SUMMARY,
@@ -12,6 +13,7 @@ import HomeScreen from '@/screens/HomeScreen';
 export default function HomeTab() {
   const router = useRouter();
   const { pendingCount, acceptedLogs } = usePendingQueue();
+  const { breakdown, macroTargets } = useSettings();
 
   const summary = useMemo((): DaySummary => {
     const extra = acceptedLogs.reduce(
@@ -24,13 +26,16 @@ export default function HomeTab() {
       { calories: 0, p: 0, c: 0, f: 0 },
     );
     return {
-      ...MOCK_SUMMARY,
+      goal: breakdown?.goalCalories ?? MOCK_SUMMARY.goal,
       consumed: MOCK_SUMMARY.consumed + extra.calories,
       p: MOCK_SUMMARY.p + extra.p,
+      pGoal: macroTargets?.protein ?? MOCK_SUMMARY.pGoal,
       c: MOCK_SUMMARY.c + extra.c,
+      cGoal: macroTargets?.carbs ?? MOCK_SUMMARY.cGoal,
       f: MOCK_SUMMARY.f + extra.f,
+      fGoal: macroTargets?.fat ?? MOCK_SUMMARY.fGoal,
     };
-  }, [acceptedLogs]);
+  }, [acceptedLogs, breakdown, macroTargets]);
 
   const recentLogs = useMemo(
     () => [

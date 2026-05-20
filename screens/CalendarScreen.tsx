@@ -35,6 +35,13 @@ function formatDayHeading(dateKey: string) {
   });
 }
 
+function formatMealTime(loggedAt: string) {
+  return new Date(loggedAt).toLocaleString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export default function CalendarScreen() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -132,7 +139,14 @@ export default function CalendarScreen() {
                     activeOpacity={0.8}
                     onPress={() => setDetailMeal(meal)}>
                     <View style={styles.mealInfo}>
-                      <Text style={styles.mealName}>{meal.meal_name}</Text>
+                      <View style={styles.mealNameRow}>
+                        <Text style={styles.mealName} numberOfLines={1}>
+                          {meal.meal_name}
+                        </Text>
+                        <Text style={styles.mealTime}>
+                          {formatMealTime(meal.logged_at)}
+                        </Text>
+                      </View>
                       <Text style={styles.mealMeta}>
                         {formatSource(meal.source)} · {meal.items.length}{' '}
                         {meal.items.length === 1 ? 'item' : 'items'}
@@ -226,11 +240,23 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  mealNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 4,
+  },
   mealName: {
+    flex: 1,
     color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+  },
+  mealTime: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
   },
   mealMeta: {
     color: Colors.textSecondary,

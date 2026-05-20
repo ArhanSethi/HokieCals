@@ -32,6 +32,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 48,
       fat: 14,
       source: 'dining_hall',
+      logged_at: loggedAt(-3, 8, 15),
       items: [
         { name: 'Scrambled Eggs', calories: 180, protein: 14, carbs: 2, fat: 12 },
         { name: 'Whole Wheat Toast', calories: 120, protein: 4, carbs: 22, fat: 2 },
@@ -47,6 +48,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 62,
       fat: 12,
       source: 'dining_hall',
+      logged_at: loggedAt(-3, 12, 22),
       items: [
         { name: 'Grilled Chicken Breast', calories: 220, protein: 38, carbs: 0, fat: 5 },
         { name: 'Steamed Rice', calories: 210, protein: 4, carbs: 45, fat: 1 },
@@ -65,6 +67,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 42,
       fat: 10,
       source: 'manual',
+      logged_at: loggedAt(-2, 7, 32),
       items: [
         { name: 'Greek Yogurt', calories: 150, protein: 15, carbs: 8, fat: 4 },
         { name: 'Granola', calories: 190, protein: 3, carbs: 34, fat: 6 },
@@ -79,6 +82,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 98,
       fat: 32,
       source: 'grubhub',
+      logged_at: loggedAt(-2, 18, 5),
       is_favorite: true,
       items: [
         { name: 'Chicken', calories: 180, protein: 32, carbs: 0, fat: 7 },
@@ -99,6 +103,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 8,
       fat: 24,
       source: 'dining_hall',
+      logged_at: loggedAt(-1, 9, 10),
       items: [
         { name: '3-Egg Omelette', calories: 280, protein: 24, carbs: 2, fat: 20 },
         { name: 'Spinach & Peppers', calories: 40, protein: 2, carbs: 4, fat: 0 },
@@ -114,6 +119,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 44,
       fat: 22,
       source: 'dining_hall',
+      logged_at: loggedAt(-1, 12, 25),
       items: [
         { name: 'Turkey Club Sandwich', calories: 420, protein: 30, carbs: 38, fat: 18 },
         { name: 'Apple', calories: 100, protein: 0, carbs: 26, fat: 0 },
@@ -128,6 +134,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 8,
       fat: 3,
       source: 'manual',
+      logged_at: loggedAt(-1, 22, 15),
       items: [
         { name: 'Whey Protein Shake', calories: 220, protein: 40, carbs: 8, fat: 3 },
       ],
@@ -143,6 +150,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 52,
       fat: 10,
       source: 'manual',
+      logged_at: loggedAt(0, 7, 45),
       items: [
         { name: 'Oats & Almond Milk', calories: 220, protein: 8, carbs: 38, fat: 6 },
         { name: 'Banana & Peanut Butter', calories: 140, protein: 4, carbs: 18, fat: 6 },
@@ -157,6 +165,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 58,
       fat: 16,
       source: 'dining_hall',
+      logged_at: loggedAt(0, 11, 47),
       items: [
         { name: 'Grilled Chicken', calories: 240, protein: 42, carbs: 0, fat: 6 },
         { name: 'Quinoa', calories: 220, protein: 8, carbs: 40, fat: 4 },
@@ -175,6 +184,7 @@ const MOCK_BY_DAY: Record<string, CalendarMeal[]> = {
       carbs: 58,
       fat: 14,
       source: 'manual',
+      logged_at: loggedAt(1, 8, 0),
       items: [
         { name: 'Everything Bagel', calories: 280, protein: 10, carbs: 54, fat: 2 },
         { name: 'Cream Cheese', calories: 140, protein: 4, carbs: 4, fat: 12 },

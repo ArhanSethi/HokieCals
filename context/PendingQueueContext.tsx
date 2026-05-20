@@ -23,6 +23,7 @@ type PendingQueueContextValue = {
   acceptedLogs: AcceptedMealLog[];
   pendingCount: number;
   connectGrubhub: () => Promise<void>;
+  disconnectGrubhub: () => void;
   acceptOrder: (id: string) => void;
   denyOrder: (id: string) => void;
   updateOrder: (id: string, updates: PendingOrderUpdates) => void;
@@ -50,6 +51,12 @@ export function PendingQueueProvider({
     setIsConnected(true);
     setPendingOrders(createMockImportedOrders());
     setIsConnecting(false);
+  }, []);
+
+  const disconnectGrubhub = useCallback(() => {
+    setIsConnected(false);
+    setIsConnecting(false);
+    setPendingOrders([]);
   }, []);
 
   const acceptOrder = useCallback((id: string) => {
@@ -90,6 +97,7 @@ export function PendingQueueProvider({
       acceptedLogs,
       pendingCount: pendingOrders.length,
       connectGrubhub,
+      disconnectGrubhub,
       acceptOrder,
       denyOrder,
       updateOrder,
@@ -100,6 +108,7 @@ export function PendingQueueProvider({
       pendingOrders,
       acceptedLogs,
       connectGrubhub,
+      disconnectGrubhub,
       acceptOrder,
       denyOrder,
       updateOrder,

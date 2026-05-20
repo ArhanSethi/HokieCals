@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { PendingQueueProvider } from '@/context/PendingQueueContext';
+import { SettingsProvider } from '@/context/SettingsContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -45,8 +46,9 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   return (
-    <PendingQueueProvider>
-      <ThemeProvider value={DarkTheme}>
+    <SettingsProvider>
+      <PendingQueueProvider>
+        <ThemeProvider value={DarkTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
@@ -55,7 +57,8 @@ function RootLayoutNav() {
           />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
-      </ThemeProvider>
-    </PendingQueueProvider>
+        </ThemeProvider>
+      </PendingQueueProvider>
+    </SettingsProvider>
   );
 }
