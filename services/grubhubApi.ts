@@ -1,25 +1,7 @@
-import { getOrCreateDeviceIds } from '@/services/grubhubStorage';
-
-const API_BASE = 'https://api-gtm.grubhub.com';
+const API_BASE =
+  process.env.EXPO_PUBLIC_GRUBHUB_PROXY_URL ?? 'http://localhost:3000';
 const CLIENT_ID = 'ghiphone_Vkuxbs6t0f4SZjTOW42Y52z1itJ7Li0Tw3FEcboT';
 const LOGIN_DEVICE_ID = '609EC148-2425-4840-ADF1-C27697504EE0';
-
-/** Exact headers required for POST /auth/login. */
-const LOGIN_HEADERS: Record<string, string> = {
-  'Content-Type': 'application/json',
-  'user-agent': 'GrubHub/2026.19 (iPhone; iOS 26.4.1; Scale/3.00)',
-  'x-gh-browser-id': '8E2C438E-6A6E-4587-8C69-20CC8BB30D7F',
-  'x-px-os': 'iOS',
-  'x-px-device-model': 'iPhone16,1',
-  'x-gh-features': '0=phone;1=Grubhub 2026.19.0;2=iOS 26.4.1;60=24061',
-  'x-px-mobile-sdk-version': '3.1.5',
-  'x-gh-cs-id': 'F59D4909-FF02-4770-B390-714DEF9E0B79',
-  'x-px-authorization':
-    '2:eyJ1IjoiNDA2M2IwOTYtNTUyYy0xMWYxLTg5MDctMDU1MjVkZmNlMTRhIiwidiI6ImQ2M2VmOTAwLTM5MGEtMTFmMS05NGU4LWM2ZjE5NmU4YzZhYSIsInQiOjE3NzkzNzkzNTEsImgiOiIxZDYyYzAxOWYyMDNjNWY4YjkyMmZmYjkyNmZjY2I0YiJ9',
-  accept: '*/*',
-  'accept-language': 'en-US;q=1',
-  'accept-encoding': 'gzip',
-};
 
 export class GrubhubApiError extends Error {
   code: 'invalid_credentials' | 'session_expired' | 'network' | 'unknown';
@@ -56,15 +38,9 @@ export type GrubhubOrderSummary = {
   order_date?: string;
 };
 
-async function buildHeaders(accessToken?: string, browserId?: string) {
-  const ids = await getOrCreateDeviceIds();
+function buildHeaders(accessToken?: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'user-agent': 'GrubHub/2026.19 (iPhone; iOS 26.4.1; Scale/3.00)',
-    'x-gh-browser-id': browserId ?? ids.browserId,
-    'x-gh-features': '0=phone;1=Grubhub 2026.19.0;2=iOS 26.4.1;60=24061',
-    'x-px-os': 'iOS',
-    brand: 'GRUBHUB',
   };
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
@@ -123,7 +99,7 @@ async function request<T>(
     response = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
-        ...(await buildHeaders(accessToken)),
+        ...buildHeaders(accessToken),
         ...(init.headers as Record<string, string> | undefined),
       },
     });
@@ -140,9 +116,9 @@ async function request<T>(
 export async function grubhubLogin(userEmail: string, userPassword: string) {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}/auth/login`, {
+    response = await fetch(`${API_BASE}/login`, {
       method: 'POST',
-      headers: LOGIN_HEADERS,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: userEmail,
         password: userPassword,
@@ -190,7 +166,7 @@ export async function grubhubLogin(userEmail: string, userPassword: string) {
 }
 
 export async function grubhubRefreshToken(refreshToken: string) {
-  const data = await request<RefreshResponse>('/auth/refresh', {
+  const data = await request<RefreshResponse>('/refresh', {
     method: 'POST',
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
@@ -213,7 +189,7 @@ export async function grubhubListOrders(
   accessToken: string,
 ): Promise<GrubhubOrderSummary[]> {
   const data = await request<{ orders?: GrubhubOrderSummary[] }>(
-    `/tapingo/diners/${udId}/orders`,
+    `/orders/${udId}`,
     { method: 'GET' },
     accessToken,
   );
@@ -226,7 +202,7 @@ export async function grubhubOrderDetail(
   accessToken: string,
 ): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>(
-    `/tapingo/diners/${udId}/order-history/${orderId}`,
+    `/orders/${udId}/${orderId}`,
     { method: 'GET' },
     accessToken,
   );
