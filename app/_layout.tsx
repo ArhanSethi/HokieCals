@@ -39,36 +39,34 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
+  return (
+    <PendingQueueProvider>
+      <SettingsProvider>
+        <MealLogProvider>
+          <GrubhubAuthProvider>
+            {loaded ? <RootLayoutNav /> : null}
+          </GrubhubAuthProvider>
+        </MealLogProvider>
+      </SettingsProvider>
+    </PendingQueueProvider>
+  );
 }
 
 function RootLayoutNav() {
   return (
-    <SettingsProvider>
-      <MealLogProvider>
-        <PendingQueueProvider>
-          <GrubhubAuthProvider>
-          <ThemeProvider value={DarkTheme}>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="dining-hall"
-                options={{ headerShown: false, presentation: 'card' }}
-              />
-              <Stack.Screen
-                name="pending-queue"
-                options={{ headerShown: false, presentation: 'card' }}
-              />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            </Stack>
-          </ThemeProvider>
-          </GrubhubAuthProvider>
-        </PendingQueueProvider>
-      </MealLogProvider>
-    </SettingsProvider>
+    <ThemeProvider value={DarkTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="dining-hall"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen
+          name="pending-queue"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+      </Stack>
+    </ThemeProvider>
   );
 }

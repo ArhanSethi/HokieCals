@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 
 import { useGrubhubAuth } from '@/context/GrubhubAuthContext';
 import { usePendingQueue } from '@/context/PendingQueueContext';
@@ -37,12 +36,10 @@ export default function GrubhubConnectScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = async () => {
-    if (!email.trim() || !password) return;
-    await login(email, password);
+  const handleSignIn = async () => {
+    if (!email.trim() || !password || isConnecting) return;
+    await login(email.trim(), password);
   };
-
-  const showForm = !isConnected || sessionExpired;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -55,27 +52,14 @@ export default function GrubhubConnectScreen() {
           showsVerticalScrollIndicator={false}>
           <Text style={styles.header}>Grubhub</Text>
           <Text style={styles.subtitle}>
-            Sign in with your Grubhub campus account to import delivery orders
-            into your pending queue.
+            Sign in with your campus Grubhub account to import orders into your
+            pending queue.
           </Text>
-
-          <View style={styles.iconWrap}>
-            <SymbolView
-              name={{
-                ios: 'bag.fill',
-                android: 'shopping_cart',
-                web: 'shopping_cart',
-              }}
-              tintColor={Colors.maroon}
-              size={72}
-            />
-          </View>
 
           {sessionExpired && (
             <View style={styles.banner}>
               <Text style={styles.bannerText}>
-                Your Grubhub session expired. Sign in again to continue syncing
-                orders.
+                Session expired — sign in again to keep syncing orders.
               </Text>
             </View>
           )}
@@ -89,86 +73,70 @@ export default function GrubhubConnectScreen() {
                 style={styles.retryBtn}
                 onPress={() => {
                   dismissNetworkError();
-                  if (isConnected) {
-                    syncOrders();
-                  } else {
-                    handleSubmit();
-                  }
+                  handleSignIn();
                 }}>
                 <Text style={styles.retryText}>Retry</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {showForm ? (
-            <View style={styles.form}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={(t) => {
-                  setEmail(t);
-                  clearLoginError();
-                }}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                placeholder="you@vt.edu"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isConnecting}
-              />
+          <View style={styles.form}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={(value) => {
+                setEmail(value);
+                clearLoginError();
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              placeholder="you@vt.edu"
+              placeholderTextColor={Colors.textSecondary}
+              editable={!isConnecting}
+            />
 
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={(t) => {
-                  setPassword(t);
-                  clearLoginError();
-                }}
-                secureTextEntry
-                textContentType="password"
-                placeholder="Grubhub password"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isConnecting}
-              />
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={(value) => {
+                setPassword(value);
+                clearLoginError();
+              }}
+              secureTextEntry
+              textContentType="password"
+              placeholder="Password"
+              placeholderTextColor={Colors.textSecondary}
+              editable={!isConnecting}
+            />
 
-              {loginError ? (
-                <Text style={styles.inlineError}>{loginError}</Text>
-              ) : null}
+            {loginError ? (
+              <Text style={styles.inlineError}>{loginError}</Text>
+            ) : null}
 
-              <TouchableOpacity
-                style={[
-                  styles.connectBtn,
-                  isConnecting && styles.connectBtnDisabled,
-                ]}
-                onPress={handleSubmit}
-                disabled={isConnecting || !email.trim() || !password}
-                activeOpacity={0.85}>
-                {isConnecting ? (
-                  <ActivityIndicator color={Colors.white} />
-                ) : (
-                  <Text style={styles.connectBtnText}>
-                    {sessionExpired ? 'Reconnect Grubhub' : 'Connect Grubhub'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : (
+            <TouchableOpacity
+              style={[styles.signInBtn, isConnecting && styles.signInBtnDisabled]}
+              onPress={handleSignIn}
+              disabled={isConnecting || !email.trim() || !password}
+              activeOpacity={0.85}>
+              {isConnecting ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.signInBtnText}>Sign In</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {isConnected && !sessionExpired && (
             <View style={styles.statusCard}>
               <View style={styles.connectedRow}>
-                <SymbolView
-                  name={{
-                    ios: 'checkmark.circle.fill',
-                    android: 'check_circle',
-                    web: 'check_circle',
-                  }}
-                  tintColor={Colors.green}
-                  size={24}
-                />
-                <Text style={styles.connectedText}>Grubhub connected</Text>
+                <View style={styles.statusDot} />
+                <Text style={styles.connectedText}>Signed in</Text>
               </View>
+
               {pendingCount > 0 ? (
                 <TouchableOpacity
                   style={styles.queueBtn}
@@ -183,6 +151,7 @@ export default function GrubhubConnectScreen() {
                   No new orders in your pending queue.
                 </Text>
               )}
+
               <TouchableOpacity
                 style={styles.syncBtn}
                 onPress={syncOrders}
@@ -194,11 +163,12 @@ export default function GrubhubConnectScreen() {
                   <Text style={styles.syncBtnText}>Sync orders</Text>
                 )}
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.disconnectBtn}
                 onPress={disconnect}
                 activeOpacity={0.85}>
-                <Text style={styles.disconnectText}>Disconnect</Text>
+                <Text style={styles.disconnectText}>Sign out</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -238,10 +208,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
-  iconWrap: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
   banner: {
     backgroundColor: '#3a2020',
     borderRadius: 12,
@@ -278,7 +244,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   form: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
     color: Colors.textSecondary,
@@ -293,26 +259,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: Colors.white,
     fontSize: 16,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   inlineError: {
     color: Colors.red,
     fontSize: 14,
     marginBottom: 12,
   },
-  connectBtn: {
+  signInBtn: {
     backgroundColor: Colors.maroon,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     minHeight: 52,
     justifyContent: 'center',
-    marginTop: 4,
   },
-  connectBtnDisabled: {
+  signInBtnDisabled: {
     opacity: 0.7,
   },
-  connectBtnText: {
+  signInBtnText: {
     color: Colors.white,
     fontSize: 17,
     fontWeight: '700',
@@ -321,12 +286,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.macroCard,
     borderRadius: 14,
     padding: 20,
+    marginBottom: 16,
   },
   connectedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginBottom: 16,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.green,
   },
   connectedText: {
     color: Colors.white,
@@ -378,7 +350,6 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 13,
     lineHeight: 20,
-    marginTop: 24,
     textAlign: 'center',
   },
 });

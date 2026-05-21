@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEYS = {
   accessToken: 'grubhub_access_token',
@@ -17,34 +17,32 @@ export type GrubhubStoredSession = {
 };
 
 export async function loadGrubhubSession(): Promise<GrubhubStoredSession | null> {
-  const accessToken = await SecureStore.getItemAsync(KEYS.accessToken);
-  const refreshToken = await SecureStore.getItemAsync(KEYS.refreshToken);
-  const udId = await SecureStore.getItemAsync(KEYS.udId);
+  const accessToken = await AsyncStorage.getItem(KEYS.accessToken);
+  const refreshToken = await AsyncStorage.getItem(KEYS.refreshToken);
+  const udId = await AsyncStorage.getItem(KEYS.udId);
   if (!accessToken || !refreshToken || !udId) return null;
 
-  const lastOrderId = await SecureStore.getItemAsync(KEYS.lastOrderId);
+  const lastOrderId = await AsyncStorage.getItem(KEYS.lastOrderId);
   return { accessToken, refreshToken, udId, lastOrderId };
 }
 
 export async function saveGrubhubSession(session: GrubhubStoredSession) {
-  await SecureStore.setItemAsync(KEYS.accessToken, session.accessToken);
-  await SecureStore.setItemAsync(KEYS.refreshToken, session.refreshToken);
-  await SecureStore.setItemAsync(KEYS.udId, session.udId);
+  await AsyncStorage.setItem(KEYS.accessToken, session.accessToken);
+  await AsyncStorage.setItem(KEYS.refreshToken, session.refreshToken);
+  await AsyncStorage.setItem(KEYS.udId, session.udId);
   if (session.lastOrderId) {
-    await SecureStore.setItemAsync(KEYS.lastOrderId, session.lastOrderId);
+    await AsyncStorage.setItem(KEYS.lastOrderId, session.lastOrderId);
   } else {
-    await SecureStore.deleteItemAsync(KEYS.lastOrderId);
+    await AsyncStorage.removeItem(KEYS.lastOrderId);
   }
 }
 
 export async function updateLastOrderId(orderId: string) {
-  await SecureStore.setItemAsync(KEYS.lastOrderId, orderId);
+  await AsyncStorage.setItem(KEYS.lastOrderId, orderId);
 }
 
 export async function clearGrubhubSession() {
-  await Promise.all(
-    Object.values(KEYS).map((key) => SecureStore.deleteItemAsync(key)),
-  );
+  await AsyncStorage.multiRemove(Object.values(KEYS));
 }
 
 function randomUuid() {
@@ -56,16 +54,16 @@ function randomUuid() {
 }
 
 export async function getOrCreateDeviceIds() {
-  let deviceId = await SecureStore.getItemAsync(KEYS.deviceId);
-  let browserId = await SecureStore.getItemAsync(KEYS.browserId);
+  let deviceId = await AsyncStorage.getItem(KEYS.deviceId);
+  let browserId = await AsyncStorage.getItem(KEYS.browserId);
 
   if (!deviceId) {
     deviceId = randomUuid();
-    await SecureStore.setItemAsync(KEYS.deviceId, deviceId);
+    await AsyncStorage.setItem(KEYS.deviceId, deviceId);
   }
   if (!browserId) {
     browserId = randomUuid();
-    await SecureStore.setItemAsync(KEYS.browserId, browserId);
+    await AsyncStorage.setItem(KEYS.browserId, browserId);
   }
 
   return { deviceId, browserId };
