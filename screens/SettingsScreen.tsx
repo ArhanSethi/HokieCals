@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import MacroAdjustModal from '@/components/MacroAdjustModal';
-import { usePendingQueue } from '@/context/PendingQueueContext';
+import { useGrubhubAuth } from '@/context/GrubhubAuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { Colors } from '@/theme';
 import { ACTIVITY_LEVELS, type GoalType, type MacroRatios } from '@/utils/nutrition';
@@ -51,7 +51,7 @@ function Pill({ label, active, onPress }: PillProps) {
 export default function SettingsScreen() {
   const { settings, updateSettings, setMacroRatio, breakdown, macroTargets } =
     useSettings();
-  const { isConnected, disconnectGrubhub } = usePendingQueue();
+  const { isConnected, disconnect: disconnectGrubhub } = useGrubhubAuth();
   const [editingMacro, setEditingMacro] = useState<keyof MacroRatios | null>(
     null,
   );

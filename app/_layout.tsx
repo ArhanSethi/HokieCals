@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { GrubhubAuthProvider } from '@/context/GrubhubAuthContext';
 import { MealLogProvider } from '@/context/MealLogContext';
 import { PendingQueueProvider } from '@/context/PendingQueueContext';
 import { SettingsProvider } from '@/context/SettingsContext';
@@ -50,6 +51,7 @@ function RootLayoutNav() {
     <SettingsProvider>
       <MealLogProvider>
         <PendingQueueProvider>
+          <GrubhubAuthProvider>
           <ThemeProvider value={DarkTheme}>
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -64,6 +66,7 @@ function RootLayoutNav() {
               <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             </Stack>
           </ThemeProvider>
+          </GrubhubAuthProvider>
         </PendingQueueProvider>
       </MealLogProvider>
     </SettingsProvider>

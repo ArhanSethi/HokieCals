@@ -22,7 +22,9 @@ type PendingQueueContextValue = {
   acceptedLogs: AcceptedMealLog[];
   pendingCount: number;
   setGrubhubConnecting: (connecting: boolean) => void;
+  restoreGrubhubConnection: () => void;
   importGrubhubOrders: (orders: PendingOrder[]) => void;
+  appendGrubhubOrders: (orders: PendingOrder[]) => void;
   disconnectGrubhub: () => void;
   acceptOrder: (id: string) => void;
   denyOrder: (id: string) => void;
@@ -47,10 +49,24 @@ export function PendingQueueProvider({
     setIsConnecting(connecting);
   }, []);
 
+  const restoreGrubhubConnection = useCallback(() => {
+    setIsConnected(true);
+  }, []);
+
   const importGrubhubOrders = useCallback((orders: PendingOrder[]) => {
     setIsConnected(true);
     setIsConnecting(false);
     setPendingOrders(orders);
+  }, []);
+
+  const appendGrubhubOrders = useCallback((orders: PendingOrder[]) => {
+    setIsConnected(true);
+    setIsConnecting(false);
+    setPendingOrders((prev) => {
+      const seen = new Set(prev.map((o) => o.id));
+      const fresh = orders.filter((o) => !seen.has(o.id));
+      return [...fresh, ...prev];
+    });
   }, []);
 
   const disconnectGrubhub = useCallback(() => {
@@ -97,7 +113,9 @@ export function PendingQueueProvider({
       acceptedLogs,
       pendingCount: pendingOrders.length,
       setGrubhubConnecting,
+      restoreGrubhubConnection,
       importGrubhubOrders,
+      appendGrubhubOrders,
       disconnectGrubhub,
       acceptOrder,
       denyOrder,
@@ -109,7 +127,9 @@ export function PendingQueueProvider({
       pendingOrders,
       acceptedLogs,
       setGrubhubConnecting,
+      restoreGrubhubConnection,
       importGrubhubOrders,
+      appendGrubhubOrders,
       disconnectGrubhub,
       acceptOrder,
       denyOrder,

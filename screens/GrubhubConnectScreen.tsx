@@ -1,292 +1,214 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
   Platform,
-  Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { WebView, type WebViewNavigation } from 'react-native-webview';
 
+import { useGrubhubAuth } from '@/context/GrubhubAuthContext';
 import { usePendingQueue } from '@/context/PendingQueueContext';
-import {
-  GRUBHUB_HISTORY_URL,
-  GRUBHUB_HOME_URL,
-  GRUBHUB_INJECT_JS,
-  GRUBHUB_LOGIN_URL,
-  isAllowedGrubhubFlowUrl,
-  isGrubhubOrdersMessage,
-  isVtSsoFlowUrl,
-  parseGrubhubHistoryPayload,
-  shouldTriggerGrubhubHistoryFetch,
-} from '@/services/grubhub';
 import { Colors } from '@/theme';
-
-const HISTORY_NAV_JS = `window.location.href = ${JSON.stringify(GRUBHUB_HISTORY_URL)}; true;`;
 
 export default function GrubhubConnectScreen() {
   const router = useRouter();
-  const webViewRef = useRef<WebView>(null);
-  const postAuthHandled = useRef(false);
-  const historyCaptureStarted = useRef(false);
-  const ordersImported = useRef(false);
-
-  const resetWebViewSession = () => {
-    postAuthHandled.current = false;
-    historyCaptureStarted.current = false;
-    ordersImported.current = false;
-  };
-
+  const { pendingCount } = usePendingQueue();
   const {
     isConnected,
     isConnecting,
-    pendingCount,
-    setGrubhubConnecting,
-    importGrubhubOrders,
-  } = usePendingQueue();
+    sessionExpired,
+    networkError,
+    loginError,
+    login,
+    syncOrders,
+    disconnect,
+    clearLoginError,
+    dismissNetworkError,
+  } = useGrubhubAuth();
 
-  const [showWebView, setShowWebView] = useState(false);
-  const [webViewUri, setWebViewUri] = useState(GRUBHUB_LOGIN_URL);
-  const [statusMessage, setStatusMessage] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleConnect = () => {
-    if (Platform.OS === 'web') {
-      Alert.alert(
-        'Grubhub login',
-        'Grubhub connect requires the iOS or Android app. Web preview does not support the login WebView.',
-      );
-      return;
-    }
-
-    resetWebViewSession();
-    setWebViewUri(GRUBHUB_LOGIN_URL);
-    setStatusMessage('Sign in to your Grubhub account…');
-    setGrubhubConnecting(true);
-    setShowWebView(true);
+  const handleSubmit = async () => {
+    if (!email.trim() || !password) return;
+    await login(email, password);
   };
 
-  const handleCloseWebView = () => {
-    setShowWebView(false);
-    setGrubhubConnecting(false);
-    setStatusMessage('');
-    resetWebViewSession();
-  };
-
-  const handleShouldStartLoad = useCallback((request: { url: string }) => {
-    return isAllowedGrubhubFlowUrl(request.url);
-  }, []);
-
-  const handleNavigationChange = useCallback(
-    (navState: WebViewNavigation) => {
-      const url = navState.url ?? '';
-      if (navState.loading) return;
-
-      if (isVtSsoFlowUrl(url)) {
-        setStatusMessage('Completing Virginia Tech sign-in…');
-        return;
-      }
-
-      const normalized = url.toLowerCase();
-      if (normalized.includes('grubhub.com') && normalized.includes('login')) {
-        setStatusMessage('Sign in to Grubhub…');
-        return;
-      }
-
-      if (url.includes('/account/history')) {
-        if (historyCaptureStarted.current) return;
-        historyCaptureStarted.current = true;
-        setStatusMessage('Fetching orders…');
-        webViewRef.current?.injectJavaScript(GRUBHUB_INJECT_JS);
-        setTimeout(() => {
-          webViewRef.current?.reload();
-        }, 150);
-        return;
-      }
-
-      if (shouldTriggerGrubhubHistoryFetch(url) && !postAuthHandled.current) {
-        postAuthHandled.current = true;
-        setStatusMessage('Loading order history…');
-        webViewRef.current?.injectJavaScript(GRUBHUB_INJECT_JS);
-        setTimeout(() => {
-          webViewRef.current?.injectJavaScript(HISTORY_NAV_JS);
-        }, 100);
-      }
-    },
-    [],
-  );
-
-  const handleWebViewMessage = useCallback(
-    (event: { nativeEvent: { data: string } }) => {
-      if (ordersImported.current) return;
-
-      try {
-        const payload = JSON.parse(event.nativeEvent.data);
-        if (!isGrubhubOrdersMessage(payload)) return;
-
-        const orders = parseGrubhubHistoryPayload(payload.data);
-        ordersImported.current = true;
-        importGrubhubOrders(orders);
-        setShowWebView(false);
-        setStatusMessage('');
-
-        if (orders.length > 0) {
-          router.push('/pending-queue');
-        } else {
-          Alert.alert(
-            'No orders found',
-            'We reached your order history but could not parse any orders. Try syncing again after placing an order.',
-          );
-        }
-      } catch {
-        setGrubhubConnecting(false);
-        Alert.alert(
-          'Import failed',
-          'Could not read order data from Grubhub. Please try again.',
-        );
-      }
-    },
-    [importGrubhubOrders, router, setGrubhubConnecting],
-  );
-
-  const handleSyncAgain = () => {
-    if (Platform.OS === 'web') {
-      Alert.alert('Grubhub sync', 'Use the iOS or Android app to sync orders.');
-      return;
-    }
-    resetWebViewSession();
-    setWebViewUri(GRUBHUB_HOME_URL);
-    setGrubhubConnecting(true);
-    setStatusMessage('Syncing order history…');
-    setShowWebView(true);
-  };
+  const showForm = !isConnected || sessionExpired;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.container}>
-        <Text style={styles.header}>Grubhub</Text>
-        <Text style={styles.subtitle}>
-          Sign in with Grubhub to import delivery orders into your pending
-          queue for review.
-        </Text>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <Text style={styles.header}>Grubhub</Text>
+          <Text style={styles.subtitle}>
+            Sign in with your Grubhub campus account to import delivery orders
+            into your pending queue.
+          </Text>
 
-        <View style={styles.iconWrap}>
-          <SymbolView
-            name={{
-              ios: 'bag.fill',
-              android: 'shopping_cart',
-              web: 'shopping_cart',
-            }}
-            tintColor={Colors.maroon}
-            size={72}
-          />
-        </View>
+          <View style={styles.iconWrap}>
+            <SymbolView
+              name={{
+                ios: 'bag.fill',
+                android: 'shopping_cart',
+                web: 'shopping_cart',
+              }}
+              tintColor={Colors.maroon}
+              size={72}
+            />
+          </View>
 
-        {isConnected ? (
-          <View style={styles.statusCard}>
-            <View style={styles.connectedRow}>
-              <SymbolView
-                name={{
-                  ios: 'checkmark.circle.fill',
-                  android: 'check_circle',
-                  web: 'check_circle',
-                }}
-                tintColor={Colors.green}
-                size={24}
-              />
-              <Text style={styles.connectedText}>Grubhub connected</Text>
-            </View>
-            {pendingCount > 0 ? (
-              <TouchableOpacity
-                style={styles.queueBtn}
-                onPress={() => router.push('/pending-queue')}>
-                <Text style={styles.queueBtnText}>
-                  Review {pendingCount} pending{' '}
-                  {pendingCount === 1 ? 'order' : 'orders'}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={styles.emptyHint}>
-                No orders waiting for review.
+          {sessionExpired && (
+            <View style={styles.banner}>
+              <Text style={styles.bannerText}>
+                Your Grubhub session expired. Sign in again to continue syncing
+                orders.
               </Text>
-            )}
-            <TouchableOpacity
-              style={styles.syncBtn}
-              onPress={handleSyncAgain}
-              activeOpacity={0.85}>
-              <Text style={styles.syncBtnText}>Sync orders again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={[styles.connectBtn, isConnecting && styles.connectBtnDisabled]}
-            onPress={handleConnect}
-            disabled={isConnecting}
-            activeOpacity={0.85}>
-            {isConnecting ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <Text style={styles.connectBtnText}>Connect Grubhub</Text>
-            )}
-          </TouchableOpacity>
-        )}
-
-        <Text style={styles.note}>
-          Your session stays in the WebView. Order history is intercepted locally
-          and never sent to our servers.
-        </Text>
-      </View>
-
-      <Modal
-        visible={showWebView}
-        animationType="slide"
-        onRequestClose={handleCloseWebView}>
-        <SafeAreaView style={styles.webViewSafe} edges={['top', 'bottom']}>
-          <View style={styles.webViewHeader}>
-            <TouchableOpacity onPress={handleCloseWebView} hitSlop={12}>
-              <SymbolView
-                name={{ ios: 'xmark', android: 'close', web: 'close' }}
-                tintColor={Colors.white}
-                size={22}
-              />
-            </TouchableOpacity>
-            <Text style={styles.webViewTitle}>Grubhub Sign In</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          {statusMessage.length > 0 && (
-            <View style={styles.statusBar}>
-              <ActivityIndicator color={Colors.maroon} size="small" />
-              <Text style={styles.statusBarText}>{statusMessage}</Text>
             </View>
           )}
 
-          <WebView
-            ref={webViewRef}
-            source={{ uri: webViewUri }}
-            key={webViewUri}
-            style={styles.webView}
-            onMessage={handleWebViewMessage}
-            onNavigationStateChange={handleNavigationChange}
-            onShouldStartLoadWithRequest={handleShouldStartLoad}
-            sharedCookiesEnabled={true}
-            thirdPartyCookiesEnabled={true}
-            domStorageEnabled
-            javaScriptEnabled
-            startInLoadingState
-            renderLoading={() => (
-              <View style={styles.webViewLoading}>
-                <ActivityIndicator color={Colors.maroon} size="large" />
+          {networkError && (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorText}>
+                Network error. Check your connection and try again.
+              </Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => {
+                  dismissNetworkError();
+                  if (isConnected) {
+                    syncOrders();
+                  } else {
+                    handleSubmit();
+                  }
+                }}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {showForm ? (
+            <View style={styles.form}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  clearLoginError();
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                placeholder="you@vt.edu"
+                placeholderTextColor={Colors.textSecondary}
+                editable={!isConnecting}
+              />
+
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={(t) => {
+                  setPassword(t);
+                  clearLoginError();
+                }}
+                secureTextEntry
+                textContentType="password"
+                placeholder="Grubhub password"
+                placeholderTextColor={Colors.textSecondary}
+                editable={!isConnecting}
+              />
+
+              {loginError ? (
+                <Text style={styles.inlineError}>{loginError}</Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={[
+                  styles.connectBtn,
+                  isConnecting && styles.connectBtnDisabled,
+                ]}
+                onPress={handleSubmit}
+                disabled={isConnecting || !email.trim() || !password}
+                activeOpacity={0.85}>
+                {isConnecting ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.connectBtnText}>
+                    {sessionExpired ? 'Reconnect Grubhub' : 'Connect Grubhub'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.statusCard}>
+              <View style={styles.connectedRow}>
+                <SymbolView
+                  name={{
+                    ios: 'checkmark.circle.fill',
+                    android: 'check_circle',
+                    web: 'check_circle',
+                  }}
+                  tintColor={Colors.green}
+                  size={24}
+                />
+                <Text style={styles.connectedText}>Grubhub connected</Text>
               </View>
-            )}
-          />
-        </SafeAreaView>
-      </Modal>
+              {pendingCount > 0 ? (
+                <TouchableOpacity
+                  style={styles.queueBtn}
+                  onPress={() => router.push('/pending-queue')}>
+                  <Text style={styles.queueBtnText}>
+                    Review {pendingCount} pending{' '}
+                    {pendingCount === 1 ? 'order' : 'orders'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.emptyHint}>
+                  No new orders in your pending queue.
+                </Text>
+              )}
+              <TouchableOpacity
+                style={styles.syncBtn}
+                onPress={syncOrders}
+                disabled={isConnecting}
+                activeOpacity={0.85}>
+                {isConnecting ? (
+                  <ActivityIndicator color={Colors.maroon} />
+                ) : (
+                  <Text style={styles.syncBtnText}>Sync orders</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.disconnectBtn}
+                onPress={disconnect}
+                activeOpacity={0.85}>
+                <Text style={styles.disconnectText}>Disconnect</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Text style={styles.note}>
+            Credentials are sent only to Grubhub. Tokens are stored securely on
+            your device.
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -296,10 +218,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  container: {
+  flex: {
     flex: 1,
+  },
+  container: {
     paddingHorizontal: 24,
     paddingTop: 8,
+    paddingBottom: 32,
   },
   header: {
     fontSize: 28,
@@ -311,11 +236,69 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,
-    marginBottom: 32,
+    marginBottom: 24,
   },
   iconWrap: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
+  },
+  banner: {
+    backgroundColor: '#3a2020',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.maroon,
+  },
+  bannerText: {
+    color: Colors.white,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  errorCard: {
+    backgroundColor: Colors.macroCard,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: Colors.white,
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  retryBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.maroon,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  retryText: {
+    color: Colors.white,
+    fontWeight: '700',
+  },
+  form: {
+    marginBottom: 16,
+  },
+  label: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: Colors.macroCard,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: Colors.white,
+    fontSize: 16,
+    marginBottom: 14,
+  },
+  inlineError: {
+    color: Colors.red,
+    fontSize: 14,
+    marginBottom: 12,
   },
   connectBtn: {
     backgroundColor: Colors.maroon,
@@ -324,6 +307,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 52,
     justifyContent: 'center',
+    marginTop: 4,
   },
   connectBtnDisabled: {
     opacity: 0.7,
@@ -367,11 +351,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.maroon,
+    marginBottom: 10,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   syncBtnText: {
     color: Colors.maroon,
     fontWeight: '600',
     fontSize: 15,
+  },
+  disconnectBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  disconnectText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   emptyHint: {
     color: Colors.textSecondary,
@@ -384,50 +380,5 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 24,
     textAlign: 'center',
-  },
-  webViewSafe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  webViewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
-  },
-  webViewTitle: {
-    color: Colors.white,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  headerSpacer: {
-    width: 22,
-  },
-  statusBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: Colors.macroCard,
-  },
-  statusBarText: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    flex: 1,
-  },
-  webView: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  webViewLoading: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
   },
 });
