@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { MealLogProvider } from '@/context/MealLogContext';
 import { PendingQueueProvider } from '@/context/PendingQueueContext';
 import { SettingsProvider } from '@/context/SettingsContext';
 
@@ -47,18 +48,24 @@ export default function RootLayout() {
 function RootLayoutNav() {
   return (
     <SettingsProvider>
-      <PendingQueueProvider>
-        <ThemeProvider value={DarkTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="pending-queue"
-            options={{ headerShown: false, presentation: 'card' }}
-          />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-        </ThemeProvider>
-      </PendingQueueProvider>
+      <MealLogProvider>
+        <PendingQueueProvider>
+          <ThemeProvider value={DarkTheme}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="dining-hall"
+                options={{ headerShown: false, presentation: 'card' }}
+              />
+              <Stack.Screen
+                name="pending-queue"
+                options={{ headerShown: false, presentation: 'card' }}
+              />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            </Stack>
+          </ThemeProvider>
+        </PendingQueueProvider>
+      </MealLogProvider>
     </SettingsProvider>
   );
 }

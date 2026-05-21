@@ -6,7 +6,6 @@ import React, {
   useState,
 } from 'react';
 
-import { createMockImportedOrders } from '@/data/mockGrubhubOrders';
 import type { MealLogPreview } from '@/data/mockHomeData';
 import type { PendingOrder, PendingOrderUpdates } from '@/types/grubhub';
 
@@ -22,7 +21,8 @@ type PendingQueueContextValue = {
   pendingOrders: PendingOrder[];
   acceptedLogs: AcceptedMealLog[];
   pendingCount: number;
-  connectGrubhub: () => Promise<void>;
+  setGrubhubConnecting: (connecting: boolean) => void;
+  importGrubhubOrders: (orders: PendingOrder[]) => void;
   disconnectGrubhub: () => void;
   acceptOrder: (id: string) => void;
   denyOrder: (id: string) => void;
@@ -32,8 +32,6 @@ type PendingQueueContextValue = {
 const PendingQueueContext = createContext<PendingQueueContextValue | null>(
   null,
 );
-
-const CONNECT_DELAY_MS = 1800;
 
 export function PendingQueueProvider({
   children,
@@ -45,12 +43,14 @@ export function PendingQueueProvider({
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [acceptedLogs, setAcceptedLogs] = useState<AcceptedMealLog[]>([]);
 
-  const connectGrubhub = useCallback(async () => {
-    setIsConnecting(true);
-    await new Promise((resolve) => setTimeout(resolve, CONNECT_DELAY_MS));
+  const setGrubhubConnecting = useCallback((connecting: boolean) => {
+    setIsConnecting(connecting);
+  }, []);
+
+  const importGrubhubOrders = useCallback((orders: PendingOrder[]) => {
     setIsConnected(true);
-    setPendingOrders(createMockImportedOrders());
     setIsConnecting(false);
+    setPendingOrders(orders);
   }, []);
 
   const disconnectGrubhub = useCallback(() => {
@@ -96,7 +96,8 @@ export function PendingQueueProvider({
       pendingOrders,
       acceptedLogs,
       pendingCount: pendingOrders.length,
-      connectGrubhub,
+      setGrubhubConnecting,
+      importGrubhubOrders,
       disconnectGrubhub,
       acceptOrder,
       denyOrder,
@@ -107,7 +108,8 @@ export function PendingQueueProvider({
       isConnecting,
       pendingOrders,
       acceptedLogs,
-      connectGrubhub,
+      setGrubhubConnecting,
+      importGrubhubOrders,
       disconnectGrubhub,
       acceptOrder,
       denyOrder,

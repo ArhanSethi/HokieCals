@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { ProgressChart } from 'react-native-chart-kit';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
 
 import { Colors } from '../theme';
 import type { DaySummary, MealLogPreview } from '../data/mockHomeData';
@@ -94,6 +95,7 @@ type HomeScreenProps = {
   recentLogs: MealLogPreview[];
   pendingCount: number;
   onPendingPress?: () => void;
+  onAddPress?: () => void;
 };
 
 export default function HomeScreen({
@@ -101,6 +103,7 @@ export default function HomeScreen({
   recentLogs,
   pendingCount,
   onPendingPress,
+  onAddPress,
 }: HomeScreenProps) {
   const { width } = useWindowDimensions();
   const chartSize = Math.min(width - 48, 280);
@@ -118,7 +121,20 @@ export default function HomeScreen({
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.header}>HokieCals</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.header}>HokieCals</Text>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={onAddPress}
+            activeOpacity={0.85}
+            accessibilityLabel="Log dining hall meal">
+            <SymbolView
+              name={{ ios: 'plus', android: 'add', web: 'add' }}
+              tintColor={Colors.white}
+              size={26}
+            />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.weekStrip}>
           {weekDays.map(({ letter, dateNum, dayIndex }) => (
@@ -230,12 +246,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 32,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 20,
+  },
   header: {
     fontSize: 28,
     fontWeight: '700',
     color: Colors.white,
-    marginTop: 8,
-    marginBottom: 20,
+  },
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.maroon,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   weekStrip: {
     flexDirection: 'row',

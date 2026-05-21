@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 
+import { useMealLog } from '@/context/MealLogContext';
 import { usePendingQueue } from '@/context/PendingQueueContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
@@ -14,9 +15,19 @@ export default function HomeTab() {
   const router = useRouter();
   const { pendingCount, acceptedLogs } = usePendingQueue();
   const { breakdown, macroTargets } = useSettings();
+  const { todayLogs, toPreview } = useMealLog();
 
   const summary = useMemo((): DaySummary => {
-    const extra = acceptedLogs.reduce(
+    const allLogs = [
+      ...todayLogs,
+      ...acceptedLogs.map((log) => ({
+        calories: log.calories,
+        protein: log.protein,
+        carbs: log.carbs,
+        fat: log.fat,
+      })),
+    ];
+    const extra = allLogs.reduce(
       (acc, log) => ({
         calories: acc.calories + log.calories,
         p: acc.p + log.protein,
@@ -35,14 +46,15 @@ export default function HomeTab() {
       f: MOCK_SUMMARY.f + extra.f,
       fGoal: macroTargets?.fat ?? MOCK_SUMMARY.fGoal,
     };
-  }, [acceptedLogs, breakdown, macroTargets]);
+  }, [todayLogs, acceptedLogs, breakdown, macroTargets]);
 
   const recentLogs = useMemo(
     () => [
+      ...todayLogs.map(toPreview),
       ...acceptedLogs.map(({ protein, carbs, fat, ...log }) => log),
       ...MOCK_RECENT_LOGS,
     ],
-    [acceptedLogs],
+    [todayLogs, acceptedLogs, toPreview],
   );
 
   return (
@@ -51,6 +63,7 @@ export default function HomeTab() {
       recentLogs={recentLogs}
       pendingCount={pendingCount}
       onPendingPress={() => router.push('/pending-queue')}
+      onAddPress={() => router.push('/dining-hall')}
     />
   );
 }
