@@ -7,8 +7,9 @@ const KEYS = {
   lastOrderId: 'grubhub_last_order_id',
   deviceId: 'grubhub_device_id',
   browserId: 'grubhub_browser_id',
-  // Identifies the WebView-captured server session for this user.
   sessionUserId: 'grubhub_session_user_id',
+  // udId captured during WebView login (may differ from credential login udId)
+  webViewUdId: 'grubhub_webview_ud_id',
 } as const;
 
 export type GrubhubStoredSession = {
@@ -61,6 +62,18 @@ export async function setGrubhubUserId(userId: string) {
 
 export async function clearGrubhubUserId() {
   await AsyncStorage.removeItem(KEYS.sessionUserId);
+}
+
+export async function getWebViewUdId(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.webViewUdId);
+}
+
+export async function setWebViewUdId(udId: string) {
+  await AsyncStorage.setItem(KEYS.webViewUdId, udId);
+}
+
+export async function clearWebViewUdId() {
+  await AsyncStorage.removeItem(KEYS.webViewUdId);
 }
 
 function randomUuid() {
