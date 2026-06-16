@@ -1,8 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView, type WebViewNavigation } from 'react-native-webview';
-import CookieManager from '@react-native-cookies/cookies';
+import {
+  WebView,
+  type WebViewMessageEvent,
+  type WebViewNavigation,
+} from 'react-native-webview';
 import { useRouter } from 'expo-router';
 
 import { registerGrubhubSession } from '@/services/grubhubApi';
@@ -11,12 +14,45 @@ import { Colors } from '@/theme';
 const LOGIN_URL = 'https://www.grubhub.com/login';
 const GRUBHUB_ORIGIN = 'https://www.grubhub.com';
 
-// A desktop-class UA tends to get a cleaner web login form than the default
-// in-app WebView UA.
 const WEB_USER_AGENT =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
-// RFC4122-ish v4 id. Good enough to key a server session.
+// Injected after login is detected. Reads all JS-accessible cookies and
+// localStorage, then posts them back via ReactNativeWebView.postMessage.
+// HttpOnly cookies are not accessible to JS, but Grubhub's web app stores
+// its auth token in non-HttpOnly cookies and localStorage.
+const EXTRACT_JS = `
+(function() {
+  try {
+    var cookies = {};
+    document.cookie.split(';').forEach(function(pair) {
+      var idx = pair.indexOf('=');
+      if (idx < 0) return;
+      var key = pair.slice(0, idx).trim();
+      var val = pair.slice(idx + 1).trim();
+      if (key) cookies[key] = val;
+    });
+
+    var storage = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k) storage[k] = localStorage.getItem(k);
+    }
+
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: 'SESSION_CAPTURE',
+      cookies: cookies,
+      localStorage: storage,
+    }));
+  } catch(e) {
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: 'SESSION_CAPTURE_ERROR',
+      error: String(e),
+    }));
+  }
+})(); true;
+`;
+
 function makeUserId(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -27,31 +63,57 @@ function makeUserId(): string {
 
 export default function GrubhubLoginScreen() {
   const router = useRouter();
+  const webViewRef = useRef<WebView>(null);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Ensures we only attempt the capture once per successful login.
   const handledRef = useRef(false);
 
-  const captureSession = async () => {
+  const onNavigationStateChange = (nav: WebViewNavigation) => {
+    if (
+      nav.url &&
+      nav.url.startsWith(GRUBHUB_ORIGIN) &&
+      !nav.url.includes('/login') &&
+      !nav.loading &&
+      !handledRef.current
+    ) {
+      // Trigger JS extraction; result arrives via onMessage.
+      webViewRef.current?.injectJavaScript(EXTRACT_JS);
+    }
+  };
+
+  const onMessage = async (event: WebViewMessageEvent) => {
     if (handledRef.current) return;
+
+    let payload: { type: string; cookies?: Record<string, string>; localStorage?: Record<string, string | null>; error?: string };
+    try {
+      payload = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return;
+    }
+
+    if (payload.type !== 'SESSION_CAPTURE') return;
+
     handledRef.current = true;
     setRegistering(true);
     setError(null);
 
     try {
-      // CookieManager returns HttpOnly cookies too — `document.cookie` from
-      // injected JS cannot see the auth/session cookies we actually need.
-      const all = await CookieManager.get(GRUBHUB_ORIGIN, true);
-      const cookies: Record<string, string> = {};
-      for (const [name, cookie] of Object.entries(all)) {
-        if (cookie?.value) cookies[name] = cookie.value;
+      const cookies: Record<string, string> = payload.cookies ?? {};
+
+      // Merge any auth-relevant localStorage values as synthetic cookie entries
+      // so the server can forward them. Grubhub web often stores the bearer
+      // token in localStorage under keys like 'access_token' or 'gh_access_token'.
+      const ls = payload.localStorage ?? {};
+      for (const [k, v] of Object.entries(ls)) {
+        if (v && (k.includes('token') || k.includes('session') || k.includes('auth'))) {
+          cookies[`__ls_${k}`] = v;
+        }
       }
 
-      // No cookies yet — the redirect probably fired mid-flow. Let the user
-      // keep going and try again on the next navigation.
       if (Object.keys(cookies).length === 0) {
         handledRef.current = false;
         setRegistering(false);
+        setError('No session found after login. Please try again.');
         return;
       }
 
@@ -65,18 +127,6 @@ export default function GrubhubLoginScreen() {
     }
   };
 
-  const onNavigationStateChange = (nav: WebViewNavigation) => {
-    // Grubhub redirects away from /login once the user is authenticated.
-    if (
-      nav.url &&
-      nav.url.startsWith(GRUBHUB_ORIGIN) &&
-      !nav.url.includes('/login') &&
-      !nav.loading
-    ) {
-      captureSession();
-    }
-  };
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {error && (
@@ -86,8 +136,10 @@ export default function GrubhubLoginScreen() {
       )}
 
       <WebView
+        ref={webViewRef}
         source={{ uri: LOGIN_URL }}
         onNavigationStateChange={onNavigationStateChange}
+        onMessage={onMessage}
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
         originWhitelist={['https://*']}
