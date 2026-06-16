@@ -1,3 +1,8 @@
+import {
+  getGrubhubUserId,
+  setGrubhubUserId,
+} from '@/services/grubhubStorage';
+
 const API_BASE =
   process.env.EXPO_PUBLIC_GRUBHUB_PROXY_URL ?? 'http://localhost:3000';
 const CLIENT_ID = 'ghiphone_Vkuxbs6t0f4SZjTOW42Y52z1itJ7Li0Tw3FEcboT';
@@ -184,12 +189,72 @@ export async function grubhubRefreshToken(refreshToken: string) {
   return { accessToken, refreshToken: newRefresh };
 }
 
+// Returns the stored WebView session user id, or null if the user has not
+// completed the WebView login. Callers should redirect to the login screen
+// when this is null.
+export async function ensureGrubhubUserId(): Promise<string | null> {
+  return getGrubhubUserId();
+}
+
+// Registers cookies captured from the WebView login with the proxy and
+// persists the generated userId locally.
+export async function registerGrubhubSession(
+  userId: string,
+  cookies: Record<string, string>,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/api/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, cookies }),
+    });
+  } catch {
+    throw new GrubhubApiError(
+      'network',
+      'Network error. Check your connection and try again.',
+    );
+  }
+
+  if (!response.ok) {
+    throw new GrubhubApiError(
+      'unknown',
+      `Could not register your Grubhub session (${response.status}).`,
+    );
+  }
+
+  await setGrubhubUserId(userId);
+}
+
+// Logout: removes the user's session from the proxy.
+export async function deleteGrubhubSession(userId: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/session/${userId}`, { method: 'DELETE' });
+  } catch {
+    // Best-effort: local logout still proceeds even if this fails.
+  }
+}
+
+// Appends the stored userId to a path as a query param. Every authenticated
+// order call must carry it so the proxy can find the right cookie session.
+async function withUserId(path: string): Promise<string> {
+  const userId = await getGrubhubUserId();
+  if (!userId) {
+    throw new GrubhubApiError(
+      'session_expired',
+      'Not signed in to Grubhub. Please sign in again.',
+    );
+  }
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}userId=${encodeURIComponent(userId)}`;
+}
+
 export async function grubhubListOrders(
   udId: string,
   accessToken: string,
 ): Promise<GrubhubOrderSummary[]> {
   const data = await request<{ orders?: GrubhubOrderSummary[] }>(
-    `/orders/${udId}`,
+    await withUserId(`/orders/${udId}`),
     { method: 'GET' },
     accessToken,
   );
@@ -202,7 +267,7 @@ export async function grubhubOrderDetail(
   accessToken: string,
 ): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>(
-    `/orders/${udId}/${orderId}`,
+    await withUserId(`/orders/${udId}/${orderId}`),
     { method: 'GET' },
     accessToken,
   );

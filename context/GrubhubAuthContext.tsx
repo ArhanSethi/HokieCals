@@ -11,6 +11,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import { usePendingQueue } from '@/context/PendingQueueContext';
 import {
+  deleteGrubhubSession,
   GrubhubApiError,
   grubhubListOrders,
   grubhubLogin,
@@ -24,6 +25,8 @@ import {
 } from '@/services/grubhubParser';
 import {
   clearGrubhubSession,
+  clearGrubhubUserId,
+  getGrubhubUserId,
   loadGrubhubSession,
   saveGrubhubSession,
   updateLastOrderId,
@@ -239,6 +242,12 @@ export function GrubhubAuthProvider({ children }: { children: React.ReactNode })
   );
 
   const disconnect = useCallback(async () => {
+    // Tear down the WebView session on the proxy too, if there is one.
+    const userId = await getGrubhubUserId();
+    if (userId) {
+      await deleteGrubhubSession(userId);
+      await clearGrubhubUserId();
+    }
     await clearGrubhubSession();
     setHasSession(false);
     setSessionExpired(false);

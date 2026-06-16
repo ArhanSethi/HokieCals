@@ -65,6 +65,10 @@ function RootLayoutNav() {
           name="pending-queue"
           options={{ headerShown: false, presentation: 'card' }}
         />
+        <Stack.Screen
+          name="grubhub-login"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
