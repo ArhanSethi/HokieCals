@@ -139,6 +139,21 @@ export default function GrubhubConnectScreen() {
                 <Text style={styles.signInBtnText}>Sign In</Text>
               )}
             </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.webviewLoginBtn}
+              onPress={() => router.push('/grubhub-login')}
+              activeOpacity={0.85}>
+              <Text style={styles.webviewLoginBtnText}>
+                Connect via Grubhub website
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {isConnected && !sessionExpired && (
@@ -304,6 +319,37 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 17,
     fontWeight: '700',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 16,
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.macroCard,
+  },
+  dividerText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  webviewLoginBtn: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    minHeight: 52,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.maroon,
+  },
+  webviewLoginBtnText: {
+    color: Colors.maroon,
+    fontSize: 17,
+    fontWeight: '600',
   },
   statusCard: {
     backgroundColor: Colors.macroCard,
