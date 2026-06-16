@@ -14,9 +14,6 @@ import { Colors } from '@/theme';
 const LOGIN_URL = 'https://www.grubhub.com/login';
 const GRUBHUB_ORIGIN = 'https://www.grubhub.com';
 
-const WEB_USER_AGENT =
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
-
 // Injected after login is detected. Reads all JS-accessible cookies and
 // localStorage, then posts them back via ReactNativeWebView.postMessage.
 // HttpOnly cookies are not accessible to JS, but Grubhub's web app stores
@@ -143,7 +140,6 @@ export default function GrubhubLoginScreen() {
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
         originWhitelist={['https://*']}
-        userAgent={WEB_USER_AGENT}
         startInLoadingState
         renderLoading={() => (
           <View style={styles.loading}>
