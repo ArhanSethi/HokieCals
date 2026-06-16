@@ -31,14 +31,40 @@ function cookieHeader(cookies) {
     .join('; ');
 }
 
+// Token keys the Grubhub web app might use for the Bearer access token,
+// prefixed with __ls_ because we store them from localStorage captures.
+const LS_TOKEN_KEYS = [
+  '__ls_access_token',
+  '__ls_accessToken',
+  '__ls_bearer_token',
+  '__ls_auth_token',
+  '__ls_id_token',
+];
+
 function buildHeaders(req, cookies) {
   const headers = { ...STATIC_HEADERS };
+
   if (req.headers.authorization) {
     headers.Authorization = req.headers.authorization;
+  } else if (cookies) {
+    // Fall back to a Bearer token we captured from the web app's localStorage.
+    for (const key of LS_TOKEN_KEYS) {
+      if (cookies[key] && cookies[key].length > 20) {
+        headers.Authorization = `Bearer ${cookies[key]}`;
+        break;
+      }
+    }
   }
-  if (cookies && Object.keys(cookies).length > 0) {
-    headers.Cookie = cookieHeader(cookies);
+
+  // Forward real cookies only — strip the synthetic __ls_ entries.
+  if (cookies) {
+    const realCookies = Object.entries(cookies)
+      .filter(([k]) => !k.startsWith('__ls_'))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('; ');
+    if (realCookies) headers.Cookie = realCookies;
   }
+
   return headers;
 }
 
