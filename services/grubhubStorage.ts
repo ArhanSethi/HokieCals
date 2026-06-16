@@ -7,6 +7,8 @@ const KEYS = {
   lastOrderId: 'grubhub_last_order_id',
   deviceId: 'grubhub_device_id',
   browserId: 'grubhub_browser_id',
+  // Identifies the WebView-captured server session for this user.
+  sessionUserId: 'grubhub_session_user_id',
 } as const;
 
 export type GrubhubStoredSession = {
@@ -43,6 +45,22 @@ export async function updateLastOrderId(orderId: string) {
 
 export async function clearGrubhubSession() {
   await AsyncStorage.multiRemove(Object.values(KEYS));
+}
+
+// --- WebView session user id ---
+// Identifies the user's cookie session stored on the proxy. Absence of this
+// value means the user must go through the WebView login again.
+
+export async function getGrubhubUserId(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.sessionUserId);
+}
+
+export async function setGrubhubUserId(userId: string) {
+  await AsyncStorage.setItem(KEYS.sessionUserId, userId);
+}
+
+export async function clearGrubhubUserId() {
+  await AsyncStorage.removeItem(KEYS.sessionUserId);
 }
 
 function randomUuid() {

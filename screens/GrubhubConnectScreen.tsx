@@ -56,6 +56,17 @@ export default function GrubhubConnectScreen() {
             pending queue.
           </Text>
 
+          {!isConnected && (
+            <TouchableOpacity
+              style={styles.webviewBtn}
+              onPress={() => router.push('/grubhub-login')}
+              activeOpacity={0.85}>
+              <Text style={styles.webviewBtnText}>
+                Connect with Grubhub
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {sessionExpired && (
             <View style={styles.banner}>
               <Text style={styles.bannerText}>
@@ -241,6 +252,18 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: Colors.white,
+    fontWeight: '700',
+  },
+  webviewBtn: {
+    backgroundColor: Colors.maroon,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  webviewBtnText: {
+    color: Colors.white,
+    fontSize: 17,
     fontWeight: '700',
   },
   form: {
