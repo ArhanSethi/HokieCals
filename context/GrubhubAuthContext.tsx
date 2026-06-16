@@ -26,9 +26,12 @@ import {
 import {
   clearGrubhubSession,
   clearGrubhubUserId,
+  clearWebViewUdId,
   getGrubhubUserId,
+  getWebViewUdId,
   loadGrubhubSession,
   saveGrubhubSession,
+  setWebViewUdId,
   updateLastOrderId,
 } from '@/services/grubhubStorage';
 import type { PendingOrder } from '@/types/grubhub';
@@ -40,6 +43,7 @@ type GrubhubAuthContextValue = {
   networkError: boolean;
   loginError: string | null;
   login: (email: string, password: string) => Promise<void>;
+  connectViaWebView: (userId: string, udId: string | null) => Promise<void>;
   syncOrders: () => Promise<void>;
   disconnect: () => Promise<void>;
   clearLoginError: () => void;
@@ -129,6 +133,20 @@ export function GrubhubAuthProvider({ children }: { children: React.ReactNode })
     [fetchWithRefresh],
   );
 
+  // Called by GrubhubLoginScreen after a successful WebView login.
+  // Saves the user id (and optional udId) so the app shows as connected
+  // without needing the credential-based access/refresh tokens.
+  const connectViaWebView = useCallback(
+    async (userId: string, udId: string | null) => {
+      if (udId) await setWebViewUdId(udId);
+      setHasSession(true);
+      setSessionExpired(false);
+      setNetworkError(false);
+      restoreGrubhubConnection();
+    },
+    [restoreGrubhubConnection],
+  );
+
   const syncOrders = useCallback(
     async (options?: { full?: boolean }) => {
       if (syncingRef.current) return;
@@ -138,7 +156,51 @@ export function GrubhubAuthProvider({ children }: { children: React.ReactNode })
 
       try {
         const session = await loadGrubhubSession();
+        const webViewUserId = await getGrubhubUserId();
+
+        // No credential session — check for WebView session before expiring.
         if (!session) {
+          if (webViewUserId) {
+            // In WebView mode: try to sync using the webview udId if we have it.
+            const wvUdId = await getWebViewUdId();
+            if (!wvUdId) {
+              // Connected but can't sync without a udId yet. Show as connected,
+              // don't expire — the user just can't auto-sync orders.
+              setHasSession(true);
+              return;
+            }
+            // Fall through to do a cookie-based sync using empty access token.
+            // The proxy will use the stored cookies for auth.
+            try {
+              const summaries = await grubhubListOrders(wvUdId, '');
+              const lastOrderId = null;
+              const toFetch = summaries
+                .map((o) => String(o.order_id))
+                .filter((id) => isOrderIdNewer(id, lastOrderId));
+              if (toFetch.length > 0) {
+                const parsed: PendingOrder[] = [];
+                for (const orderId of toFetch) {
+                  const detail = await grubhubOrderDetail(wvUdId, orderId, '');
+                  const pending = parseOrderDetailToPending(detail);
+                  if (pending) parsed.push(pending);
+                }
+                if (options?.full) {
+                  importGrubhubOrders(parsed);
+                } else if (parsed.length > 0) {
+                  appendGrubhubOrders(parsed);
+                }
+              }
+              setHasSession(true);
+              setSessionExpired(false);
+            } catch (err) {
+              if (err instanceof GrubhubApiError && err.code === 'network') {
+                setNetworkError(true);
+              }
+              // Other errors (401/403 from proxy) — stay connected, don't expire.
+              setHasSession(true);
+            }
+            return;
+          }
           await handleSessionExpired();
           return;
         }
@@ -242,12 +304,12 @@ export function GrubhubAuthProvider({ children }: { children: React.ReactNode })
   );
 
   const disconnect = useCallback(async () => {
-    // Tear down the WebView session on the proxy too, if there is one.
     const userId = await getGrubhubUserId();
     if (userId) {
       await deleteGrubhubSession(userId);
       await clearGrubhubUserId();
     }
+    await clearWebViewUdId();
     await clearGrubhubSession();
     setHasSession(false);
     setSessionExpired(false);
@@ -260,6 +322,14 @@ export function GrubhubAuthProvider({ children }: { children: React.ReactNode })
     (async () => {
       const session = await loadGrubhubSession();
       if (session) {
+        setHasSession(true);
+        setSessionExpired(false);
+        restoreGrubhubConnection();
+        return;
+      }
+      // Also restore from a WebView session persisted across app restarts.
+      const userId = await getGrubhubUserId();
+      if (userId) {
         setHasSession(true);
         setSessionExpired(false);
         restoreGrubhubConnection();
@@ -284,6 +354,7 @@ export function GrubhubAuthProvider({ children }: { children: React.ReactNode })
       networkError,
       loginError,
       login,
+      connectViaWebView,
       syncOrders: () => syncOrders(),
       disconnect,
       clearLoginError: () => setLoginError(null),
@@ -296,6 +367,7 @@ export function GrubhubAuthProvider({ children }: { children: React.ReactNode })
       networkError,
       loginError,
       login,
+      connectViaWebView,
       syncOrders,
       disconnect,
     ],
